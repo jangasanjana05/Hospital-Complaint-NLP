@@ -1,18 +1,30 @@
-
-import gradio as gr
+import streamlit as st
 from backend import predict_complaint
 
-demo = gr.Interface(
-    fn=predict_complaint,
-    inputs=gr.Textbox(
-        lines=4,
-        label="Enter Hospital Complaint"
-    ),
-    outputs=[
-        gr.Textbox(label="Predicted Complaint Category"),
-        gr.Textbox(label="Predicted Priority")
-    ],
-    title="Hospital Complaint Classification and Priority Prediction Using NLP"
+st.set_page_config(
+    page_title="Hospital Complaint Prediction",
+    page_icon="🏥"
 )
 
-demo.launch()
+st.title("🏥 Hospital Complaint Classification")
+st.write("SRI CHAKRA SUPER SPECIALITY HOSPITAL")
+st.subheader("Complaint Category and Priority Prediction Using NLP")
+
+complaint = st.text_area(
+    "Enter Hospital Complaint",
+    placeholder="Type your hospital complaint here..."
+)
+
+if st.button("Predict Complaint"):
+    if complaint.strip():
+        category, priority = predict_complaint(complaint)
+
+        st.success("Prediction Completed!")
+
+        st.write("### Complaint Category")
+        st.info(category)
+
+        st.write("### Complaint Priority")
+        st.warning(priority)
+    else:
+        st.error("Please enter a complaint.")
