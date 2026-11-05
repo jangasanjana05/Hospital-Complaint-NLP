@@ -10,12 +10,39 @@ st.set_page_config(
     layout="wide"
 )
 
+# Professional styling
+st.markdown("""
+<style>
+.stApp {
+    background-color: #f5f8fc;
+}
+[data-testid="stSidebar"] {
+    background-color: #e8eef7;
+}
+.main-title {
+    color: #17365d;
+    font-size: 34px;
+    font-weight: bold;
+}
+.subtitle {
+    color: #52657a;
+    font-size: 17px;
+}
+div.stButton > button {
+    border-radius: 8px;
+    font-weight: bold;
+    min-height: 42px;
+}
+</style>
+""", unsafe_allow_html=True)
+
 # Session history
 if "history" not in st.session_state:
     st.session_state.history = []
 
-# Sidebar navigation
+# Sidebar
 st.sidebar.title("🏥 Complaint System")
+st.sidebar.caption("NLP-Based Complaint Management")
 
 page = st.sidebar.radio(
     "Navigation",
@@ -31,49 +58,67 @@ page = st.sidebar.radio(
 # HOME PAGE
 if page == "Home":
 
-    st.title("🏥 Hospital Complaint Classification")
-    st.subheader(
-        "Complaint Category and Priority Prediction Using NLP"
+    st.markdown(
+        '<div class="main-title">🏥 Hospital Complaint Management</div>',
+        unsafe_allow_html=True
+    )
+    st.markdown(
+        '<div class="subtitle">Complaint Category and Priority Prediction Using NLP</div>',
+        unsafe_allow_html=True
     )
 
-    st.write(
-        "This application uses Natural Language Processing "
-        "to classify hospital complaints and predict their priority."
-    )
-
+    st.write("")
     st.info(
-        "Submit a complaint to identify its category and priority."
+        "Welcome! This application uses Natural Language Processing "
+        "to identify complaint categories and predict their priority."
     )
+
+    data = backend.get_dashboard_data()
 
     col1, col2, col3 = st.columns(3)
 
-    with col1:
-        st.metric("Dataset Records", len(backend.get_dashboard_data()))
+    col1.metric("Dataset Records", len(data))
+    col2.metric("Complaint Categories", data["category"].nunique())
+    col3.metric("Priority Levels", data["priority"].nunique())
 
-    with col2:
-        st.metric(
-            "Complaint Categories",
-            backend.get_dashboard_data()["category"].nunique()
-        )
+    st.subheader("Application Features")
+    c1, c2 = st.columns(2)
 
-    with col3:
-        st.metric(
-            "Priority Levels",
-            backend.get_dashboard_data()["priority"].nunique()
-        )
+    with c1:
+        st.markdown("### 📝 Complaint Prediction")
+        st.write("Predict complaint category and priority.")
+
+        st.markdown("### 📋 Complaint History")
+        st.write("View complaints submitted during this session.")
+
+    with c2:
+        st.markdown("### 📊 Dashboard")
+        st.write("View category and priority statistics.")
+
+        st.markdown("### ℹ️ About Project")
+        st.write("Learn about the project and technologies.")
 
 # COMPLAINT PREDICTION
 elif page == "Complaint Prediction":
 
     st.title("📝 Complaint Prediction")
+    st.caption(
+        "Enter a complaint below to predict its category and priority."
+    )
+
+    # Clear input before creating the text area
+    if st.button("🧹 Clear Complaint"):
+        st.session_state.complaint_input = ""
+        st.rerun()
 
     complaint = st.text_area(
         "Enter Hospital Complaint",
-        placeholder="Type your complaint here...",
-        height=150
+        placeholder="Example: I waited for two hours but the doctor did not attend me.",
+        height=150,
+        key="complaint_input"
     )
 
-    if st.button("Predict Complaint", type="primary"):
+    if st.button("🔍 Predict Complaint", type="primary"):
 
         if complaint.strip():
 
@@ -82,22 +127,27 @@ elif page == "Complaint Prediction":
                     complaint
                 )
 
-                st.success("Prediction Completed!")
+                st.success("Prediction completed successfully!")
+
+                st.subheader("Prediction Results")
 
                 col1, col2 = st.columns(2)
 
                 with col1:
-                    st.subheader("Complaint Category")
-                    st.info(category)
+                    with st.container(border=True):
+                        st.markdown("### 🏷️ Complaint Category")
+                        st.subheader(category)
 
                 with col2:
-                    st.subheader("Predicted Priority")
-                    if priority == "High":
-                        st.error(priority)
-                    elif priority == "Medium":
-                        st.warning(priority)
-                    else:
-                        st.success(priority)
+                    with st.container(border=True):
+                        st.markdown("### 🚦 Predicted Priority")
+
+                        if priority == "High":
+                            st.error("🔴 HIGH PRIORITY")
+                        elif priority == "Medium":
+                            st.warning("🟠 MEDIUM PRIORITY")
+                        else:
+                            st.success("🟢 LOW PRIORITY")
 
                 st.session_state.history.append({
                     "Complaint": complaint,
@@ -108,11 +158,22 @@ elif page == "Complaint Prediction":
                     )
                 })
 
+                st.info(
+                    "Please review this prediction before taking action."
+                )
+
             except Exception as e:
                 st.error(f"Prediction error: {e}")
 
         else:
-            st.warning("Please enter a complaint.")
+            st.warning("Please enter a complaint first.")
+
+    st.divider()
+    st.caption(
+        "Disclaimer: Predictions are AI-generated suggestions. "
+        "They are not a substitute for professional judgment "
+        "or emergency medical assessment."
+    )
 
 # COMPLAINT HISTORY
 elif page == "Complaint History":
@@ -132,13 +193,13 @@ elif page == "Complaint History":
         csv = history_df.to_csv(index=False).encode("utf-8")
 
         st.download_button(
-            "Download Complaint History",
+            "⬇️ Download Complaint History",
             data=csv,
             file_name="complaint_history.csv",
             mime="text/csv"
         )
 
-        if st.button("Clear History"):
+        if st.button("🗑️ Clear History"):
             st.session_state.history = []
             st.rerun()
 
@@ -156,31 +217,35 @@ elif page == "Dashboard":
 
     with col1:
         st.subheader("Complaints by Category")
-        category_counts = backend.get_category_counts()
-        st.bar_chart(category_counts)
+        st.bar_chart(backend.get_category_counts())
 
     with col2:
         st.subheader("Complaints by Priority")
-        priority_counts = backend.get_priority_counts()
-        st.bar_chart(priority_counts)
+        st.bar_chart(backend.get_priority_counts())
 
     st.subheader("Dataset Overview")
-    st.dataframe(data.head(20), use_container_width=True)
+    st.dataframe(
+        data.head(20),
+        use_container_width=True,
+        hide_index=True
+    )
 
 # ABOUT PROJECT
 elif page == "About Project":
 
     st.title("ℹ️ About Project")
 
+    st.subheader(
+        "Hospital Complaint Classification and Priority Prediction Using NLP"
+    )
+
     st.write("""
-    **Project Title:**
-    Hospital Complaint Classification and Priority Prediction Using NLP
+    **Objective**
 
-    **Objective:**
-    To automatically classify hospital complaints and predict
-    their priority using Natural Language Processing.
+    To classify hospital complaints into different categories
+    and predict their priority using Natural Language Processing.
 
-    **Technologies Used:**
+    **Technologies Used**
     - Python
     - Streamlit
     - Pandas
@@ -188,18 +253,25 @@ elif page == "About Project":
     - TF-IDF
     - Multinomial Naive Bayes
 
-    **Machine Learning Tasks:**
+    **Machine Learning Tasks**
     1. Complaint Category Classification
     2. Complaint Priority Prediction
 
-    **Priority Levels:**
+    **Complaint Categories**
+    - Billing
+    - Doctor Service
+    - Hospital Management
+    - Nursing Service
+    - Pharmacy
+    - Waiting Time
+
+    **Priority Levels**
     - High
     - Medium
     - Low
     """)
 
     st.warning(
-        "Predictions are model-generated suggestions and should "
-        "be reviewed by hospital staff. They are not a substitute "
-        "for emergency assessment or professional judgment."
+        "The predictions are model-generated suggestions. "
+        "Hospital staff should review them before taking action."
     )
